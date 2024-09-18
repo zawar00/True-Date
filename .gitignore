@@ -1,1 +1,59 @@
+# Python bytecode
+*.py[cod]
+__pycache__/
+*.so
+
+# Django stuff
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.pkl
+
+# Django migrations
+**/migrations/*.py
+!**/migrations/__init__.py
+
+# Environment files
 .env
+.vscode/
+.idea/
+*.DS_Store
+
+# Ignore virtual environments
+venv/
+env/
+*.egg-info/
+.eggs/
+.Python
+
+# Ignore pip dependency directories
+pip-wheel-metadata/
+*.egg
+
+# Ignore compiled code
+*.o
+*.so
+*.a
+*.dylib
+
+# macOS specific files
+.DS_Store
+
+# Ignore testing and coverage
+.coverage
+.tox/
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+
+# Ignore static and media files
+staticfiles/
+media/
+
+# Ignore pytest cache
+.pytest_cache/
