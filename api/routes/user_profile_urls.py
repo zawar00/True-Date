@@ -1,7 +1,8 @@
 from django.urls import path
-from api.views.user_profile_view import UserProfileViewSet
+from api.views.user_profile_view import ActiveUserProfilesView, UserProfileDetailView, UserProfileUpdateView
 
 urlpatterns = [
-    path('profiles/', UserProfileViewSet.as_view({'get': 'list', 'post': 'create'}), name='userprofile-list'),
-    path('profiles/<int:pk>/', UserProfileViewSet.as_view({'get': 'retrieve', 'put': 'update'}), name='userprofile-detail'),
+    path('profiles/', ActiveUserProfilesView.as_view(), name='active-user-profiles'),
+    path('profile/', UserProfileDetailView.as_view(), name='user-profile-detail'),
+    path('profiles/edit/', UserProfileUpdateView.as_view(), name='user-profile-update'),
 ]

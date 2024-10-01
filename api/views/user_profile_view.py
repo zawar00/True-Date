@@ -1,57 +1,51 @@
-from rest_framework import viewsets
-from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from api.serializers import UserProfileSerializer
-from api.services.user_profile_service import get_user_profile_by_id, create_user_profile, update_user_profile
-from api.utils.logger import log_error, log_info
-from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.generics import RetrieveUpdateAPIView
+from api.models.user_profile import UserProfile, CustomUser
+from api.serializers.user_profile_serializer import UserProfileSerializer
+from api.utils.responses import success_response, error_response
+# Custom permissions for role-based access
+from api.permissions.permissions import IsAdminUser, IsRegularUser
 
-class UserProfileViewSet(viewsets.ViewSet):
+# View to get all profiles of active users
+class ActiveUserProfilesView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]  # Require token
 
-    def retrieve(self, request, pk=None):
+    def get(self, request):
+        active_users = UserProfile.objects.filter(user__is_active=True)
+        serializer = UserProfileSerializer(active_users, many=True)
+        return success_response(data=serializer.data, message="Active user profiles retrieved successfully")
+
+
+# View to get the logged-in user's profile
+class UserProfileDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsRegularUser]  # Require token
+
+    def get(self, request):
         try:
-            # Fetch the user profile using the service layer
-            profile = get_user_profile_by_id(pk)
-            log_info(f"User profile retrieved for ID {pk}")
-            
-            # Serialize the retrieved profile
+            profile = UserProfile.objects.get(user=request.user)  # Get the profile of the logged-in user
             serializer = UserProfileSerializer(profile)
-            return Response(serializer.data)
+            return success_response(data=serializer.data, message="Profile retrieved successfully")
         except UserProfile.DoesNotExist:
-            log_error(f"User profile not found for ID {pk}")
-            return Response({"error": "User profile not found"}, status=status.HTTP_404_NOT_FOUND)
+            return error_response(message="User profile not found", status_code=status.HTTP_404_NOT_FOUND)
 
-    def create(self, request):
-        try:
-            # Create a user profile using the service layer
-            profile = create_user_profile(request.data)
-            log_info(f"User profile created for user {profile.user.username}")
-            
-            # Serialize the created profile
-            serializer = UserProfileSerializer(profile)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except ValidationError as e:
-            log_error(f"Validation error during profile creation: {e}")
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            log_error(f"Error during profile creation: {e}")
-            return Response({"error": "An error occurred while creating the profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# View to edit the logged-in user's profile
+class UserProfileUpdateView(RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated, IsRegularUser]  # Require token
+    serializer_class = UserProfileSerializer
 
-    def update(self, request, pk=None):
-        try:
-            # Fetch and update the user profile using the service layer
-            profile = update_user_profile(pk, request.data)
-            log_info(f"User profile updated for ID {pk}")
-            
-            # Serialize the updated profile
-            serializer = UserProfileSerializer(profile)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except UserProfile.DoesNotExist:
-            log_error(f"User profile not found for ID {pk}")
-            return Response({"error": "User profile not found"}, status=status.HTTP_404_NOT_FOUND)
-        except ValidationError as e:
-            log_error(f"Validation error during profile update: {e}")
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            log_error(f"Error during profile update: {e}")
-            return Response({"error": "An error occurred while updating the profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def get_object(self):
+        """Override to get the logged-in user's profile only"""
+        return UserProfile.objects.get(user=self.request.user)
+
+    def put(self, request, *args, **kwargs):
+        """Handle full update requests"""
+        response = self.update(request, *args, **kwargs)
+        return success_response(data=response.data, message="Profile updated successfully")
+
+    def patch(self, request, *args, **kwargs):
+        """Handle partial update requests"""
+        response = self.partial_update(request, *args, **kwargs)
+        return success_response(data=response.data, message="Profile updated successfully")

@@ -1,11 +1,15 @@
-from rest_framework import permissions
+from rest_framework.permissions import BasePermission
 
-class IsAuthenticatedOrReadOnly(permissions.BasePermission):
-    """
-    Custom permission to only allow authenticated users to modify an object, but allow
-    read-only access to unauthenticated users.
-    """
+class IsSuperAdminUser(BasePermission):
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return request.user and request.user.is_authenticated
+        return request.user.is_authenticated and request.user.role == 'SuperAdmin'
+    
+# Permission for Admin users only
+class IsAdminUser(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.is_admin()
+
+# Permission for Regular Users (non-admin)
+class IsRegularUser(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.is_regular_user()

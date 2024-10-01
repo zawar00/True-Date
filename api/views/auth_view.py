@@ -1,51 +1,112 @@
-from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
-from rest_framework.exceptions import ValidationError
-from rest_framework.response import Response
-from rest_framework import status, serializers
-from api.utils.responses import success_response, error_response
-from api.utils.validators import verify_required_params
-from api.services.auth_service import register_user  # Import the new service
-from rest_framework_simplejwt.views import TokenObtainPairView
-from api.serializers.auth_serializer import EmailTokenObtainPairSerializer
+from rest_framework import generics
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from api.serializers.auth_serializer import (
+    RegistrationSerializer,
+    OTPVerificationSerializer,
+    LoginSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetVerifySerializer,
+    PasswordResetSerializer, 
+    PasswordChangeSerializer
+)
+from api.utils.responses import success_response, error_response  # Import your response helpers
+from rest_framework_simplejwt.views import TokenRefreshView
 
+# Custom permissions for role-based access
+from api.permissions.permissions import IsAdminUser, IsRegularUser
 
-class RegisterView(APIView):
-    permission_classes = [AllowAny]  # No authentication required for registration
+class RegistrationView(generics.CreateAPIView):
+    serializer_class = RegistrationSerializer
+    permission_classes = [AllowAny]
 
-    def post(self, request):
-        # List of required fields for registration
-        required_params = ['name', 'email', 'password', 'gender', 'bio', 'looking_for', 'zipcode', 'birthday', 'distance']
-
-        try:
-            # Verify required parameters
-            verify_required_params(request.data, required_params)
-            
-            # Call the service to handle the registration logic
-            user = register_user(request.data)
-
-            # Return success response
-            return success_response(message="Registration successful.", status_code=201)
-
-        except ValidationError as e:
-            return error_response(message=str(e), status_code=400)
-
-        except Exception as e:
-            return error_response(message="Something went wrong.", errors=str(e), status_code=500)
-
-
-class EmailLoginView(APIView):
     def post(self, request, *args, **kwargs):
-        serializer = EmailTokenObtainPairSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()  # Save the new user
+        return success_response(
+            message="User registered successfully",
+            data={"email": user.email}
+        )
 
-        try:
-            serializer.is_valid(raise_exception=True)
-            token_data = serializer.validated_data
 
-            return success_response(data=token_data, message="Login successful", status_code=status.HTTP_200_OK)
+class OTPVerificationView(generics.GenericAPIView):
+    serializer_class = OTPVerificationSerializer
+    permission_classes = [AllowAny]
 
-        except serializers.ValidationError as e:
-            return error_response(message="Validation errors", errors=e.detail, status_code=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return success_response(message="OTP verified successfully", data={"user": user.email})
 
-        except Exception as e:
-            return error_response(message="An unexpected error occurred", errors=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class LoginView(generics.GenericAPIView):
+    serializer_class = LoginSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data['user']
+        tokens = serializer.get_tokens(user)
+
+        return success_response(
+            message="Login successful", 
+            data={"tokens": tokens}
+        )
+
+class PasswordResetRequestView(generics.GenericAPIView):
+    serializer_class = PasswordResetRequestSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return success_response(message="OTP sent to email.")
+
+class PasswordResetVerifyView(generics.GenericAPIView):
+    serializer_class = PasswordResetVerifySerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return success_response(message="OTP verified successfully", data={"user": user.email})
+
+class PasswordResetView(generics.GenericAPIView):
+    serializer_class = PasswordResetSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return success_response(message="Password has been reset successfully.")
+
+class PasswordChangeView(generics.GenericAPIView):
+    serializer_class = PasswordChangeSerializer
+    permission_classes = [IsAuthenticated, IsRegularUser]  # Only authenticated regular users can change passwords
+
+    def put(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return success_response(message="Password has been updated successfully.")
+
+class CustomTokenRefreshView(TokenRefreshView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            return success_response(
+                message="Token refreshed successfully",
+                data=response.data
+            )
+        else:
+            return error_response(
+                message="Failed to refresh token",
+                status_code=response.status_code
+            )
