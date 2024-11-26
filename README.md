@@ -32,27 +32,30 @@ Ensure the following are installed on your system:
 1. **Clone the Repository**
 
 2. **Change Folder**:
-    cd RealTrueDate
-
-3. **Set Up a Virtual Environment**:
-   python -m venv venv
-  source venv/bin/activate   # On Windows, use `venv\Scripts\activate`
-
-4. **Install Project Dependencies**:
-   pip install -r requirements.txt
    
-5. **Configure PostgreSQL and Redis**:
-  Ensure PostgreSQL is running and create a database for the project.
-  Configure Redis for caching.
+    - cd RealTrueDate
 
-6. **Apply migrations and run the server**:
-   python manage.py migrate
-   python manage.py runserver
+4. **Set Up a Virtual Environment**:
+   
+    - python -m venv venv
+    - source venv/bin/activate
+    - ** On Windows, use**
+    - `venv\Scripts\activate`
 
-Contribution Guidelines
-Branching Policy:
+5. **Install Project Dependencies**:
+   - pip install -r requirements.txt
+   
+6. **Configure PostgreSQL and Redis**:
+   
+      - Ensure PostgreSQL is running and create a database for the project.
+      - Configure Redis for caching.
 
-# All contributors must create their own branches for new features or fixes.
-  Do NOT push or merge into the v1 branch without the supervisor's approval.
-  Commit your changes to your branch and create a pull request for review.
+7. **Apply migrations and run the server**:
+   
+   - python manage.py migrate
+   - python manage.py runserver
+
+# Contribution Guidelines Branching Policy:
+
+All contributors must create their own branches for new features or fixes. Do NOT push or merge into the v1 branch without the supervisor's approval. Commit your changes to your branch and create a pull request for review.
 
