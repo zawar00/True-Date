@@ -27,6 +27,9 @@ log_file_name = f"logs/app_log_{today_date}.log"
 # Ensure the logs directory exists
 os.makedirs(os.path.dirname(log_file_name), exist_ok=True)
 
+GDAL_LIBRARY_PATH = config('GDAL_LIBRARY_PATH', 'C:/OSGeo4W/bin/gdal309.dll')
+# GEOS_LIBRARY_PATH = config('GEOS_LIBRARY_PATH', 'C:/Program Files/GDAL/bin/geos.dll')
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -36,9 +39,7 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
 
 CORS_ALLOW_ALL_ORIGINS = True
-
 CORS_ALLOW_CREDENTIALS = True
-
 CORS_ALLOWED_METHODS = [
     "GET",
     "POST",
@@ -54,19 +55,19 @@ CORS_ALLOWED_HEADERS = [
     "x-requested-with",
 ]
 
-
 # Custom user model
 AUTH_USER_MODEL = 'users.User'
 
 # Database configuration
 DATABASES = {
     'default': {
+        # 'ENGINE': 'django.db.backends.postgresql',
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': config('DB_NAME'),
         'USER': config('DB_USER'),
         'PASSWORD': config('DB_PASSWORD'),
         'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT', default='5432', cast=int),
+        'PORT': config('DB_PORT', default='5555', cast=int),
     }
 }
 
@@ -76,13 +77,12 @@ DATABASES = {
 
 # JWT configuration
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'SIGNING_KEY': config('JWT_SECRET_KEY'),
 }
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -98,12 +98,15 @@ INSTALLED_APPS = [
     'user_api.users',
     'user_api.profiles',
     'user_api.video_analysis',
+    'user_api.matching',
+    # 'user_api.messaging',
+    'user_api.support',
+    'user_api.subscription',
     'file_upload',
-    # 'matching',
-    # 'messaging',
     'admin_api.profile_review',
-    # 'admin_api.transaction_management',
+    'admin_api.transaction_management',
     'admin_api.support_management',
+    'admin_api.dashboard',
     'corsheaders',
     'django_celery_beat',
 ]
@@ -116,7 +119,9 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
         'utils.permissions.IsUserOrAdmin', 
     ],
-    'EXCEPTION_HANDLER': 'utils.exception_handler.custom_exception_handler'
+    'EXCEPTION_HANDLER': 'utils.exception_handler.custom_exception_handler',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10
 }
 
 MIDDLEWARE = [
@@ -137,7 +142,7 @@ ROOT_URLCONF = 'RealTrueDate.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -205,7 +210,7 @@ LOGGING = {
         'level': 'INFO',
     },
     'loggers': {
-        '__main__': {  # This will capture API logs from custom middleware below
+        '__main__': {
             'handlers': ['file'],
             'level': 'INFO',
             'propagate': True,
@@ -232,6 +237,17 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = config('REDIS_URL')
 
+# Stripe settings
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
+
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.office365.com')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True)
+# EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False)
+EMAIL_PORT = config('EMAIL_PORT', default=587 )
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='outlook.office365.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='Retire46$')  
 
 
 # Static files (CSS, JavaScript, Images)

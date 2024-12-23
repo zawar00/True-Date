@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from user_api.users.models import User, UserProfile
+from utils.uploadFiles import get_presigned_url
+
 
 class AdminRegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -21,17 +23,33 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializer for nested User data within the profile."""
     class Meta:
         model = User
-        fields = ['id', 'email', 'is_verified', 'time_zone', 'user_role','is_active']  # Add any other user fields you want to include
-        read_only_fields = ['id', 'is_verified', 'user_role', 'is_active']
+        fields = ['id', 'email', 'is_verified', 'time_zone', 'user_role', 'status', 'date_joined']  # Add any other user fields you want to include
+        read_only_fields = ['id', 'is_verified', 'user_role', 'status']
 
 
 class AdminProfileEditSerializer(serializers.ModelSerializer):
-    user = UserSerializer()  # Allow updating nested user data
+    user = UserSerializer()  # Nested user data
+    images = serializers.ListField(child=serializers.CharField(), required=False)
+    videos = serializers.ListField(child=serializers.CharField(), required=False)
     
     class Meta:
         model = UserProfile
-        fields = ['user', 'name', 'phone', 'dob', 'gender', 'interested_in', 'location', 'willing_to_drive', 'is_active', 'images', 'videos']
+        fields = ['user', 'name', 'phone', 'dob', 'gender', 'interested_in', 'location', 'is_active', 'images', 'videos']
         read_only_fields = ['is_active']
+    
+    def to_representation(self, instance):
+        """Override to dynamically generate pre-signed URLs for output."""
+        representation = super().to_representation(instance)
+
+        # Safely handle None values for images and videos
+        representation['images'] = [
+            get_presigned_url(image_key) for image_key in (instance.images or [])
+        ]
+        representation['videos'] = [
+            get_presigned_url(video_key) for video_key in (instance.videos or [])
+        ]
+
+        return representation
 
     def update(self, instance, validated_data):
         # Extract nested user data and profile data
@@ -59,7 +77,23 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer()
+    images = serializers.ListField(child=serializers.CharField(), required=False)
+    videos = serializers.ListField(child=serializers.CharField(), required=False)
 
     class Meta:
         model = UserProfile
-        fields = ['user', 'name', 'phone', 'dob', 'gender', 'interested_in', 'location', 'is_active', 'willing_to_drive', 'images', 'videos']
+        fields = ['user', 'name', 'phone', 'dob', 'gender', 'interested_in', 'location', 'is_active', 'images', 'videos']
+
+    def to_representation(self, instance):
+        """Override to dynamically generate pre-signed URLs for output."""
+        representation = super().to_representation(instance)
+
+        # Safely handle None values for images and videos
+        representation['images'] = [
+            get_presigned_url(image_key) for image_key in (instance.images or [])
+        ]
+        representation['videos'] = [
+            get_presigned_url(video_key) for video_key in (instance.videos or [])
+        ]
+
+        return representation

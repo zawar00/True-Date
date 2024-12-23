@@ -19,8 +19,9 @@ def create_demo_profile_for_admin(sender, instance, created, **kwargs):
                 "lat": 0.0,
                 "lng": -0.0
                 },
-            willing_to_drive=False,  # Default driving preference
+            willing_to_drive=20,  # Default driving preference
             is_active=True,  # Mark admin profiles as verified
+            status='active',  # Mark admin profiles as active
             images= ["images/key1.jpg", "images/key2.png"],
             videos= ["videos/key1.mp4"]
         )

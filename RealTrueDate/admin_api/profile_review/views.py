@@ -1,5 +1,5 @@
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from utils.response_helper import successResponse, errorResponse
 from django.contrib.auth import authenticate
@@ -13,6 +13,8 @@ from .serializers import (
 )
 from rest_framework import status
 from utils.permissions import IsAdminUser
+from utils.pagination import paginate_and_serialize
+from django.db.models import Q
 from datetime import date
 
 
@@ -25,7 +27,6 @@ class AdminRegisterView(APIView):
             admin = serializer.save()
             return successResponse(data={"email": admin.email}, message="Admin registered successfully.", code=status.HTTP_201_CREATED)
         return errorResponse(message="Validation failed", details=serializer.errors, code=status.HTTP_400_BAD_REQUEST)
-
 
 class AdminLoginView(APIView):
     permission_classes = [AllowAny]
@@ -75,7 +76,6 @@ class AdminGetProfileView(APIView):
             print(f"Error: {str(e)}")
             return errorResponse(message="An unexpected error occurred.", details=str(e), code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 class AdminChangePasswordView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -91,28 +91,53 @@ class AdminChangePasswordView(APIView):
             return errorResponse(message="Old password is incorrect.", code=status.HTTP_400_BAD_REQUEST)
         return errorResponse(message="Validation failed", details=serializer.errors, code=status.HTTP_400_BAD_REQUEST)
 
-
 class AdminEditProfileView(APIView):
     permission_classes = [IsAdminUser]
 
     def put(self, request):
         profile = request.user.profile
-        print("profile", profile)
         serializer = AdminProfileEditSerializer(instance=profile, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return successResponse(data=serializer.data, message="Profile updated successfully.")
         return errorResponse(message="Validation failed", details=serializer.errors, code=status.HTTP_400_BAD_REQUEST)
 
-
 class AdminGetAllUserProfilesView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
-        profiles = UserProfile.objects.filter(user__user_role='user')
-        serializer = UserProfileSerializer(profiles, many=True)
-        return successResponse(data=serializer.data, message="User profiles retrieved successfully.")
+        try:
+            # Fetch query parameters
+            page_size = int(request.query_params.get('page_size', 10))
+            search_query = request.query_params.get('search', '').strip()
 
+            # Base queryset
+            profiles = UserProfile.objects.filter(user__user_role='user')
+
+            # Apply search filters if provided
+            if search_query:
+                profiles = profiles.filter(
+                    Q(user__username__icontains=search_query) | 
+                    Q(user__email__icontains=search_query) |
+                    Q(name__icontains=search_query)
+                )
+
+            # Order by user date joined (newest first)
+            profiles = profiles.order_by('-user__date_joined')
+
+            # Paginate queryset
+            data = paginate_and_serialize(
+                queryset=profiles,
+                request=request,
+                serializer_class=UserProfileSerializer,
+                page_size=page_size
+            )
+
+            return successResponse(data=data, message="User profiles retrieved successfully.")
+        except ValueError:
+            return errorResponse(message="Invalid page_size or page value.", code=400)
+        except Exception as e:
+            return errorResponse(message=str(e), code=500)
 
 class AdminGetUserProfileByIDView(APIView):
     permission_classes = [IsAdminUser]
@@ -125,8 +150,6 @@ class AdminGetUserProfileByIDView(APIView):
             return successResponse(data=serializer.data, message="User profile retrieved successfully.")
         except UserProfile.DoesNotExist:
             return errorResponse(message="User profile not found or not eligible for retrieval.", code=status.HTTP_404_NOT_FOUND)
-
-
 
 class AdminApproveDisapproveUserProfileView(APIView):
     permission_classes = [IsAdminUser]

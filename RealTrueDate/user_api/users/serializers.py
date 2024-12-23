@@ -21,7 +21,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         videos = validated_data.pop('videos', [])
         password = validated_data.pop('password')
         username = validated_data.get('email') or str(uuid.uuid4())
-        
         user = User.objects.create(username=username, **validated_data)
         user.set_password(password)
         user.save()
@@ -31,10 +30,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             name=profile_data.get('name'),
             phone=profile_data.get('phone'),
             dob=profile_data.get('dob'),
+            age_min=profile_data.get('age_min'),
+            age_max=profile_data.get('age_max'),
             gender=profile_data.get('gender'),
             interested_in=profile_data.get('interested_in'),
             location=profile_data.get('location'),
-            willing_to_drive=profile_data.get('willing_to_drive'),
+            willing_to_drive=profile_data.get('willing_to_drive', None),
             images=images,
             videos=videos,
         )
@@ -57,5 +58,5 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    code = serializers.CharField(max_length=6)
+    code = serializers.CharField(max_length=4)
     new_password = serializers.CharField(write_only=True)
